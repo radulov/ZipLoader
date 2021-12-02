@@ -1,43 +1,52 @@
-import pako from 'pako/lib/inflate.js';
-import DataReader from './DataReader.js';
+'use strict';
 
-const LOCAL_FILE_HEADER = 0x04034b50;
-const CENTRAL_DIRECTORY = 0x02014b50;
+Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _inflate = require('pako/lib/inflate.js');
+
+var _inflate2 = _interopRequireDefault(_inflate);
+
+var _DataReader = require('./DataReader.js');
+
+var _DataReader2 = _interopRequireDefault(_DataReader);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var LOCAL_FILE_HEADER = 0x04034b50;
+var CENTRAL_DIRECTORY = 0x02014b50;
 // const END_OF_CENTRAL_DIRECTORY = 0x06054b50;
 
-const parseZip = ( buffer ) => {
+var parseZip = function parseZip(buffer) {
 
-	const reader = new DataReader( buffer );
-	const files = {};
-	const bufferSize = buffer.byteLength;
+	var reader = new _DataReader2.default(buffer);
+	var files = {};
+	var bufferSize = buffer.byteLength;
 	var processedSize = 0;
 
-	while ( true ) {
+	while (true) {
 
-		const signature = reader.readBytes( 4 );
+		var signature = reader.readBytes(4);
 
-		if ( signature === LOCAL_FILE_HEADER ) {
+		if (signature === LOCAL_FILE_HEADER) {
 
-			const file = parseLocalFile( reader, bufferSize);
+			var file = parseLocalFile(reader, bufferSize);
 			processedSize += file.compressedSize;
-			files[ file.name ] = { buffer: file.buffer };
+			files[file.name] = { buffer: file.buffer };
 			continue;
-
 		}
 
-		if ( signature === CENTRAL_DIRECTORY ) {
+		if (signature === CENTRAL_DIRECTORY) {
 
-			parseCentralDirectory( reader );
+			parseCentralDirectory(reader);
 			continue;
-
 		}
 
 		break;
-
 	}
 
 	return files;
-
 };
 
 // # Local file header
@@ -58,70 +67,67 @@ const parseZip = ( buffer ) => {
 // |        | (f)bytes | Filename                                 |
 // |        | (e)bytes | Extra field                              |
 // |        | (n)bytes | Compressed data                          |
-const parseLocalFile = ( reader, bufferSize ) => {
+var parseLocalFile = function parseLocalFile(reader, bufferSize) {
 
-	let i = 0;
-	let data;
-	reader.skip( 4 );
+	var i = 0;
+	var data = void 0;
+	reader.skip(4);
 	// const version          = reader.readBytes( 2 );
 	// const bitFlag          = reader.readBytes( 2 );
-	const compression      = reader.readBytes( 2 );
-	reader.skip( 8 );
+	var compression = reader.readBytes(2);
+	reader.skip(8);
 	// const lastModTime      = reader.readBytes( 2 );
 	// const lastModDate      = reader.readBytes( 2 );
 	// const crc32            = reader.readBytes( 4 );
-	var compressedSize   = reader.readBytes( 4 );
-	
-	reader.skip( 4 );
+	var compressedSize = reader.readBytes(4);
+
+	reader.skip(4);
 	// const uncompressedSize = reader.readBytes( 4 );
-	const filenameLength   = reader.readBytes( 2 );
-	const extraFieldLength = reader.readBytes( 2 );
-	const filename       = [];
+	var filenameLength = reader.readBytes(2);
+	var extraFieldLength = reader.readBytes(2);
+	var filename = [];
 	if (!compressedSize) {
 		compressedSize = bufferSize - reader.position - extraFieldLength - filenameLength - 256;
 	}
 	// const extraField     = [];
-	const compressedData = new Uint8Array( compressedSize );
+	var compressedData = new Uint8Array(compressedSize);
 
-	for ( i = 0; i < filenameLength; i ++ ) {
+	for (i = 0; i < filenameLength; i++) {
 
-		filename.push( String.fromCharCode( reader.readBytes( 1 ) ) );
-
+		filename.push(String.fromCharCode(reader.readBytes(1)));
 	}
 
-	reader.skip( extraFieldLength );
+	reader.skip(extraFieldLength);
 	// for ( i = 0; i < extraFieldLength; i ++ ) {
 
 	// 	extraField.push( reader.readBytes( 1 ) );
 
 	// }
 
-	for ( i = 0; i < compressedSize; i ++ ) {
+	for (i = 0; i < compressedSize; i++) {
 
-		compressedData[ i ] = reader.readBytes( 1 );
-
+		compressedData[i] = reader.readBytes(1);
 	}
 
-	switch ( compression ) {
+	switch (compression) {
 
 		case 0:
 			data = compressedData;
 			break;
 		case 8:
-			data = new Uint8Array( pako.inflate( compressedData, { raw: true } ) );
+			data = new Uint8Array(_inflate2.default.inflate(compressedData, { raw: true }));
 			break;
 		default:
-			console.log( `${ filename.join( '' ) }: unsupported compression type` );
+			console.log(filename.join('') + ': unsupported compression type');
 			data = compressedData;
 
 	}
 
 	return {
-		name: filename.join( '' ),
-		compressedSize,
+		name: filename.join(''),
+		compressedSize: compressedSize,
 		buffer: data
 	};
-
 };
 
 // # Central directory
@@ -148,10 +154,10 @@ const parseLocalFile = ( reader, bufferSize ) => {
 // |  46    | (f)bytes | Filename                                   |
 // |        | (e)bytes | Extra field                                |
 // |        | (c)bytes | File comment                               |
-const parseCentralDirectory = ( reader ) => {
+var parseCentralDirectory = function parseCentralDirectory(reader) {
 
 	// let i = 0;
-	reader.skip( 24 );
+	reader.skip(24);
 	// const versionMadeby        = reader.readBytes( 2 );
 	// const versionNeedToExtract = reader.readBytes( 2 );
 	// const bitFlag              = reader.readBytes( 2 );
@@ -161,10 +167,10 @@ const parseCentralDirectory = ( reader ) => {
 	// const crc32                = reader.readBytes( 4 );
 	// const compressedSize       = reader.readBytes( 4 );
 	// const uncompressedSize     = reader.readBytes( 4 );
-	const filenameLength       = reader.readBytes( 2 );
-	const extraFieldLength     = reader.readBytes( 2 );
-	const fileCommentLength    = reader.readBytes( 2 );
-	reader.skip( 12 );
+	var filenameLength = reader.readBytes(2);
+	var extraFieldLength = reader.readBytes(2);
+	var fileCommentLength = reader.readBytes(2);
+	reader.skip(12);
 	// const diskNumberStart      = reader.readBytes( 2 );
 	// const internalFileAttrs    = reader.readBytes( 2 );
 	// const externalFileAttrs    = reader.readBytes( 4 );
@@ -173,27 +179,26 @@ const parseCentralDirectory = ( reader ) => {
 	// const extraField  = [];
 	// const fileComment = [];
 
-	reader.skip( filenameLength );
+	reader.skip(filenameLength);
 	// for ( i = 0; i < filenameLength; i ++ ) {
 
 	// 	filename.push( String.fromCharCode( reader.readBytes( 1 ) ) );
 
 	// }
 
-	reader.skip( extraFieldLength );
+	reader.skip(extraFieldLength);
 	// for ( i = 0; i < extraFieldLength; i ++ ) {
 
 	// 	extraField.push( reader.readBytes( 1 ) );
 
 	// }
 
-	reader.skip( fileCommentLength );
+	reader.skip(fileCommentLength);
 	// for ( i = 0; i < fileCommentLength; i ++ ) {
 
 	// 	fileComment.push( reader.readBytes( 1 ) );
 
 	// }
-
 };
 
-export default parseZip;
+exports.default = parseZip;
