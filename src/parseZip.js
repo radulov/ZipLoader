@@ -10,7 +10,6 @@ const parseZip = ( buffer ) => {
 	const reader = new DataReader( buffer );
 	const files = {};
 	const bufferSize = buffer.byteLength;
-	var processedSize = 0;
 
 	while ( true ) {
 
@@ -19,7 +18,6 @@ const parseZip = ( buffer ) => {
 		if ( signature === LOCAL_FILE_HEADER ) {
 
 			const file = parseLocalFile( reader, bufferSize);
-			processedSize += file.compressedSize;
 			files[ file.name ] = { buffer: file.buffer };
 			continue;
 
